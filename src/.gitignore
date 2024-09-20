@@ -1,0 +1,20 @@
+# Ignore object files and binaries
+*.o
+terrain_test
+terrain_visualization
+test_main
+
+# Ignore generated files
+*.txt
+*.log
+*.tar.gz
+
+# Ignore editor or OS-specific files
+*.swp
+*.bak
+*.tmp
+.DS_Store
+
+# Ignore Makefile artifacts
+Makefile
+

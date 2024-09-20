@@ -1,14 +1,15 @@
-// main.c
 #include "terrain.h"
 #include "noise.h"
+#include "render.h"
+#include <GLFW/glfw3.h>
 #include <stdio.h>
 
 int main() {
-    // Initialize the noise system
+    // Initialize the noise system with a randomized seed
     initNoise();
     
     // Create a terrain of 100x100 grid points
-    Terrain* terrain = createTerrain(100, 100);
+    Terrain* terrain = createTerrain(1000, 1000);
     if (!terrain) {
         printf("Failed to create terrain.\n");
         return 1;
@@ -17,16 +18,27 @@ int main() {
     // Generate the terrain heights using Perlin noise
     generateTerrain(terrain);
 
-    // Print some of the height values to check if it works
-    printf("Sample terrain heights:\n");
-    for (int y = 0; y < terrain->height; y += 20) {
-        for (int x = 0; x < terrain->width; x += 20) {
-            printf("%0.2f ", terrain->heights[y * terrain->width + x]);
-        }
-        printf("\n");
+    initializeGraphics();
+    
+    startRenderLoop(terrain);
+    
+    // Clean up
+    cleanupGraphics();
+    int histogram[10] = {0};  // 10 bins for ranges [0.0-0.1), [0.1-0.2), ..., [0.9-1.0]
+
+    for (int i = 0; i < terrain->width * terrain->height; i++) {
+        float value = terrain->heights[i];
+        int bin = (int)(value * 10);
+        if (bin >= 10) bin = 9;
+        histogram[bin]++;
     }
 
-    // Clean up
+    // Print the histogram
+    for (int i = 0; i < 10; i++) {
+        printf("Range [%0.1f - %0.1f): %d\n", i / 10.0f, (i + 1) / 10.0f, histogram[i]);
+    }
+
     destroyTerrain(terrain);
     return 0;
 }
+

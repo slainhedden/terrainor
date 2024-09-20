@@ -1,7 +1,9 @@
-// terrain.c
 #include "terrain.h"
 #include "noise.h"  // Include noise header for generating heights
 #include <stdlib.h>  // For malloc and free
+#include <math.h>
+#include <stdio.h>
+#include <float.h>   // For FLT_MAX and FLT_MIN
 
 // Function to create and initialize a terrain structure
 Terrain* createTerrain(int width, int height) {
@@ -34,15 +36,37 @@ void destroyTerrain(Terrain* terrain) {
 
 // Function to generate terrain height data using Perlin noise
 void generateTerrain(Terrain* terrain) {
-    if (!terrain || !terrain->heights) return;  // Check if terrain is valid
+    if (!terrain || !terrain->heights) return;
 
-    // Loop through each grid point in the terrain
+    int octaves = 6;  // Increase number of octaves for more detail
+    float persistence = 0.7f;
+    float frequency = 1.0f;
+
+    float minVal = FLT_MAX;
+    float maxVal = -FLT_MAX;
+
+    // Generate noise values with increased frequency scaling
     for (int y = 0; y < terrain->height; y++) {
         for (int x = 0; x < terrain->width; x++) {
-            // Generate height using Perlin noise function from noise.h
-            float nx = (float)x / terrain->width;  // Normalize x coordinate
-            float ny = (float)y / terrain->height; // Normalize y coordinate
-            terrain->heights[y * terrain->width + x] = perlinNoise2D(nx, ny);
+            float nx = (float)x / terrain->width;
+            float ny = (float)y / terrain->height;
+            float noiseValue = octavePerlinNoise2D(nx, ny, octaves, persistence);  // Update frequency each octave
+            terrain->heights[y * terrain->width + x] = noiseValue;
+
+            if (noiseValue < minVal) minVal = noiseValue;
+            if (noiseValue > maxVal) maxVal = noiseValue;
+        }
+    }
+
+    // Rescale values between 0 and 1 after noise generation
+    for (int y = 0; y < terrain->height; y++) {
+        for (int x = 0; x < terrain->width; x++) {
+            float noiseValue = terrain->heights[y * terrain->width + x];
+            terrain->heights[y * terrain->width + x] = (noiseValue - minVal) / (maxVal - minVal);
         }
     }
 }
+
+
+
+   

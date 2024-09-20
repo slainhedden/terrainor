@@ -6,12 +6,16 @@ float lerp(float a, float b, float t) {
 }
 
 float fade(float t) {
-    return t * t * t * ((t * 6 - 15) + 10); // Smooths the interpolation by adjusting how the interpolation progresses between two values
+    // Quintic fade function for smoother transitions
+    return t * t * t * (t * (t * 6 - 15) + 10);
 }
 
-float grad(int hash, float x, float y) { 
-    int h = hash & 7; // Convert low 3 bits of hash code
-    float u = h < 4 ? x : y;
-    float v = h < 4 ? y : x;
-    return ((h & 1) ? -u : u) + ((h & 2) ? -v : v);
+float grad(int hash, float x, float y) {
+    int h = hash & 15;  // Use 4 bits to get 16 directions
+    float u = h < 8 ? x : y;
+    float v = h < 4 ? y : (h == 12 || h == 14) ? x : 0.0f;
+    // Corrected the conditions for sign inversion
+    return ((h & 1) == 0 ? u : -u) + ((h & 2) == 0 ? v : -v);
 }
+
+
