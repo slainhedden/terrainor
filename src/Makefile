@@ -5,11 +5,11 @@ CC = gcc
 CFLAGS = -g -Wall -Wextra -pedantic -I.
 
 # Linker Flags
-LDFLAGS = -lGL -lGLEW -lSDL2 -lm -lglfw
+LDFLAGS = -lGL -lGLU -lGLEW -lSDL2 -lm -lglfw
 
 # Source Files
 SRC = main.c noise.c render.c terrain.c utils.c
-TEST_SRC = test_main.c noise.c render.c terrain.c utils.c
+TEST_SRC = test_main.c noise.c utils.c
 TEST_MAIN_SRC = noise.c render.c terrain.c utils.c
 
 # Object Files

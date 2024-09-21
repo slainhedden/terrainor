@@ -5,8 +5,8 @@
 #include <stdio.h>
 #include <float.h>   // For FLT_MAX and FLT_MIN
 
-// Function to create and initialize a terrain structure
-Terrain* createTerrain(int width, int height) {
+// Function to create and initialize a terrain structure for 3D voxels
+Terrain* createTerrain(int width, int height, int depth) {
     // Allocate memory for the Terrain structure
     Terrain* terrain = (Terrain*)malloc(sizeof(Terrain));
     if (!terrain) {
@@ -15,9 +15,10 @@ Terrain* createTerrain(int width, int height) {
 
     terrain->width = width;
     terrain->height = height;
-    
-    // Allocate memory for the height map (2D array stored as 1D)
-    terrain->heights = (float*)malloc(width * height * sizeof(float));
+    terrain->depth = depth;
+
+    // Allocate memory for the height map (3D array stored as 1D)
+    terrain->heights = (float*)malloc(width * height * depth * sizeof(float));
     if (!terrain->heights) {
         free(terrain);  // Free terrain memory if height allocation fails
         return NULL;
@@ -34,37 +35,37 @@ void destroyTerrain(Terrain* terrain) {
     }
 }
 
-// Function to generate terrain height data using Perlin noise
+// Function to generate terrain height data using 3D Perlin noise for voxels
 void generateTerrain(Terrain* terrain) {
     if (!terrain || !terrain->heights) return;
 
-    int octaves = 6;  // Increase number of octaves for more detail
-    float persistence = 0.7f;
-    float frequency = 1.0f;
+    int octaves = 6;  
+    float persistence = 0.7f;   
+    float lacunarity = 2.0f;
+    float noiseScale = 50.0f;
 
-    float minVal = FLT_MAX;
-    float maxVal = -FLT_MAX;
+    // Ensure that width, height, and depth are valid
+    if (terrain->width <= 0 || terrain->height <= 0 || terrain->depth <= 0) return;
 
-    // Generate noise values with increased frequency scaling
-    for (int y = 0; y < terrain->height; y++) {
-        for (int x = 0; x < terrain->width; x++) {
-            float nx = (float)x / terrain->width;
-            float ny = (float)y / terrain->height;
-            float noiseValue = octavePerlinNoise2D(nx, ny, octaves, persistence);  // Update frequency each octave
-            terrain->heights[y * terrain->width + x] = noiseValue;
+    // Generate the noise map for the entire terrain grid
+    float* noiseMap = generateNoiseMap(terrain->width, terrain->height, terrain->depth, 0, 0, 0, octaves, persistence, lacunarity, noiseScale);
 
-            if (noiseValue < minVal) minVal = noiseValue;
-            if (noiseValue > maxVal) maxVal = noiseValue;
+    if (!noiseMap) {
+        printf("Failed to generate noise map.\n");
+        return;
+    }
+
+    // Copy generated noise values into the terrain heights array
+    for (int z = 0; z < terrain->depth; z++) {
+        for (int y = 0; y < terrain->height; y++) {
+            for (int x = 0; x < terrain->width; x++) {
+                terrain->heights[z * (terrain->width * terrain->height) + y * terrain->width + x] = noiseMap[z * (terrain->width * terrain->height) + y * terrain->width + x];
+            }
         }
     }
 
-    // Rescale values between 0 and 1 after noise generation
-    for (int y = 0; y < terrain->height; y++) {
-        for (int x = 0; x < terrain->width; x++) {
-            float noiseValue = terrain->heights[y * terrain->width + x];
-            terrain->heights[y * terrain->width + x] = (noiseValue - minVal) / (maxVal - minVal);
-        }
-    }
+    // Free the noise map after use
+    free(noiseMap);
 }
 
 

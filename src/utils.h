@@ -2,10 +2,10 @@
 #ifndef UTILS_H
 #define UTILS_H
 
-float lerp(float a, float b, float t);
+double lerp(double t, double a, double b);
 
-float fade(float t);
+double fade(double t);
 
-float grad(int hash, float x, float y);
+double grad(int hash, double x, double y, double z);
 
 #endif

@@ -9,7 +9,7 @@ int main() {
     initNoise();
     
     // Create a terrain of 100x100 grid points
-    Terrain* terrain = createTerrain(1000, 1000);
+    Terrain* terrain = createTerrain(1024, 1024, 62);
     if (!terrain) {
         printf("Failed to create terrain.\n");
         return 1;

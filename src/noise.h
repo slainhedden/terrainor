@@ -4,7 +4,7 @@
 #define PERM_SIZE 256
 
 void initNoise(); // Function to initialize the permutation table
-float perlinNoise2D(float x, float y); // Function to generate Perlin noise
-float octavePerlinNoise2D(float x, float y, int octaves, float persistence); // Function for multi-octave - mountains/valleys
+double perlinNoise3D(double x, double y, double z); // Function to generate Perlin noise
+float* generateNoiseMap(int width, int height, int depth, int offsetX, int offsetY, int offsetZ, int octaves, float persistence, float lacunarity, float noiseScale);
 
 #endif

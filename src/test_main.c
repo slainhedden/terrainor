@@ -1,65 +1,55 @@
 #include "noise.h"
 #include <stdio.h>
-#include <math.h>  // Include math.h for fminf and fmaxf
-#include <float.h>  // Include float.h for FLT_MAX and FLT_MIN
-
-// Declare the getTerrainChar function
-char getTerrainChar(float noiseValue) {
-    if (noiseValue < 0.2f) return '~';  // Water
-    if (noiseValue < 0.4f) return '.';  // Sand
-    if (noiseValue < 0.6f) return '^';  // Grassland
-    if (noiseValue < 0.8f) return '#';  // Mountain
-    return '@';  // Peak
-}
+#include <math.h>
+#include <float.h>
 
 int main() {
-    initNoise();  // Initialize the noise
+    initNoise();  // Initialize the noise system (random permutation vector, etc.)
 
-    int gridSize = 20;  // Increase the grid size for more detailed testing
+    int gridSize = 16;  // A manageable size for debugging
+    int depthSize = 4;  // Add depth to traverse multiple slices in Z-direction
     float minValue = FLT_MAX;
-    float maxValue = FLT_MIN;
+    float maxValue = -FLT_MAX;
     float sum = 0.0f;
 
-    printf("Noise Values:\n");
-    for (int y = 0; y < gridSize; y++) {
-        for (int x = 0; x < gridSize; x++) {
-            float nx = (float)x / (float)gridSize;  // Normalize coordinates
-            float ny = (float)y / (float)gridSize;
-            float noiseValue = octavePerlinNoise2D(nx, ny, 4, 0.5f);
-            
-            // Clamp to [0, 1]
-            noiseValue = fminf(fmaxf(noiseValue, 0.0f), 1.0f);
+    // Loop through different Z-slices
+    for (int z = 0; z < depthSize; z++) {
+        float z_value = (float)z / depthSize;  // Normalize Z value for each slice
 
-            // Print raw noise value for debugging
+        printf("Noise Values (slice at z = %f):\n", z_value);
 
-            // Update min and max values
-            if (noiseValue < minValue) {
-                minValue = noiseValue;
-               // printf("Updated minValue: %f\n", minValue);  // Debugging
+        for (int y = 0; y < gridSize; y++) {
+            for (int x = 0; x < gridSize; x++) {
+                float nx = (float)x / gridSize;
+                float ny = (float)y / gridSize;
+                float nz = z_value;  // Current slice in the Z dimension
+
+                // Generate 3D noise
+                float noiseValue = perlinNoise3D(nx, ny, nz);
+
+                // Clamp to [0, 1] for easier visualization
+                noiseValue = (noiseValue + 1.0f) / 2.0f;
+
+                // Print noise value for this point
+                printf("%0.2f ", noiseValue);
+
+                // Track min, max, and average
+                if (noiseValue < minValue) minValue = noiseValue;
+                if (noiseValue > maxValue) maxValue = noiseValue;
+                sum += noiseValue;
             }
-            if (noiseValue > maxValue) {
-                maxValue = noiseValue;
-                // printf("Updated maxValue: %f\n", maxValue);  // Debugging
-            }
-            // Accumulate sum for average calculation
-            sum += noiseValue;
-
-            // Print terrain symbol
-            printf("%c ", getTerrainChar(noiseValue));
+            printf("\n");
         }
-        printf("\n");
+
+        printf("\n");  // Separate slices for clarity
     }
 
-    // Calculate average noise value
-    float averageValue = sum / (gridSize * gridSize);
-
-    // Print statistics
-    printf("\nNoise Statistics:\n");
+    float averageValue = sum / (gridSize * gridSize * depthSize);
+    printf("Noise Statistics:\n");
     printf("Min Value: %0.4f\n", minValue);
     printf("Max Value: %0.4f\n", maxValue);
     printf("Average Value: %0.4f\n", averageValue);
 
     return 0;
 }
-
 

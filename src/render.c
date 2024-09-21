@@ -3,6 +3,7 @@
 #include <GL/gl.h>
 #include <GLFW/glfw3.h>
 #include <stdio.h>
+#include <GL/glu.h>
 
 // Define colors struct
 typedef struct {
@@ -12,8 +13,8 @@ typedef struct {
 } RGB;
 
 // Define the window dimensions
-#define WINDOW_WIDTH 800
-#define WINDOW_HEIGHT 800
+#define WINDOW_WIDTH 1024
+#define WINDOW_HEIGHT 1024
 
 // Declare a global pointer to the GLFW window
 static GLFWwindow* window = NULL;
@@ -21,7 +22,7 @@ static GLFWwindow* window = NULL;
 // Interpolated color chooser based on height value
 RGB chooseColor(float heightValue){
     RGB color;
-    
+
     if (heightValue < 0.2f){ // Water (BLUE)
         color.r = 0.0f;
         color.g = 0.0f;
@@ -47,8 +48,22 @@ RGB chooseColor(float heightValue){
         color.g = lerp(0.5f, 1.0f, t);
         color.b = lerp(0.5f, 1.0f, t);
     }
-    
+
     return color;
+}
+
+// Function to set up basic lighting
+void setupLighting() {
+    glEnable(GL_LIGHTING);
+    glEnable(GL_LIGHT0); // Enable the first light source
+
+    // Define light properties
+    GLfloat lightPos[] = { 0.0f, 0.0f, 10.0f, 1.0f };  // Light position
+    GLfloat lightColor[] = { 1.0f, 1.0f, 1.0f, 1.0f }; // White light
+
+    glLightfv(GL_LIGHT0, GL_POSITION, lightPos);
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, lightColor);  // Diffuse light
+    glLightfv(GL_LIGHT0, GL_SPECULAR, lightColor); // Specular light
 }
 
 void initializeGraphics() {
@@ -56,74 +71,165 @@ void initializeGraphics() {
         fprintf(stderr, "Failed to initialize GLFW\n");
         return;
     }
-    
+
     // Create a windowed mode window and its OpenGL context
-    window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Terrain Generator", NULL, NULL);
+    window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "3D Terrain Generator", NULL, NULL);
     if (!window) {
         glfwTerminate();
         fprintf(stderr, "Failed to create GLFW window\n");
         return;
     }
-    
+
     // Make the window's context current
     glfwMakeContextCurrent(window);
-    
+
     // Set up the viewport
     glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
-    
-    // Set up orthographic projection
+
+    // Set up perspective projection
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    glOrtho(0, WINDOW_WIDTH, WINDOW_HEIGHT, 0, -1, 1);
+    gluPerspective(45.0f, (GLfloat)WINDOW_WIDTH / (GLfloat)WINDOW_HEIGHT, 0.1f, 1000.0f);
+
+    // Set up the camera position (eye position, look-at position, and up vector)
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
+    gluLookAt(0.0f, 0.0f, 10.0f,  // Move the camera further back to see the whole grid
+              0.0f, 0.0f, 0.0f,  // Look at the origin
+              0.0f, 1.0f, 0.0f); // "Up" is in positive Y direction
+
+    // Enable depth testing for proper 3D rendering
+    glEnable(GL_DEPTH_TEST);
+
+    // Enable face culling to avoid rendering back faces
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+
+    // Set up basic lighting
+    setupLighting();
+}
+
+// 3D Bilinear interpolation between eight corner values (voxels)
+float interpolate3D(float v000, float v100, float v010, float v110,
+                    float v001, float v101, float v011, float v111,
+                    float tx, float ty, float tz) {
+    float lerp_x0 = lerp(v000, v100, tx);
+    float lerp_x1 = lerp(v010, v110, tx);
+    float lerp_x2 = lerp(v001, v101, tx);
+    float lerp_x3 = lerp(v011, v111, tx);
+
+    float lerp_y0 = lerp(lerp_x0, lerp_x1, ty);
+    float lerp_y1 = lerp(lerp_x2, lerp_x3, ty);
+
+    return lerp(lerp_y0, lerp_y1, tz);
 }
 
 void renderTerrain(Terrain* terrain) {
-    if (!terrain || !terrain->heights) return; // Ensure valid data exists before attempting to render
-    
-    // Clear Graphics before displaying
-    glClear(GL_COLOR_BUFFER_BIT);
+    if (!terrain || !terrain->heights) return;  // Ensure valid data exists before rendering
 
-    // Calculate the size of each cell in the window(like a grid on a map)
-    float cellWidth = (float)WINDOW_WIDTH / terrain->width;
-    float cellHeight = (float)WINDOW_HEIGHT / terrain->height;
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    // Render the terrain grid with interpolation
-    for(int y = 0; y < terrain->height - 1; y++){
-        for(int x = 0; x < terrain->width - 1; x++){
-            // Get height values for the four corners of the current cell
-            float h1 = terrain->heights[y * terrain->width + x];           // Top-left
-            float h2 = terrain->heights[y * terrain->width + (x + 1)];     // Top-right
-            float h3 = terrain->heights[(y + 1) * terrain->width + x];     // Bottom-left
-            float h4 = terrain->heights[(y + 1) * terrain->width + (x + 1)]; // Bottom-right
-            
-            // Calculate the position of the current cell (quad)
-            float xpos = x * cellWidth;
-            float ypos = y * cellHeight;
-            
-            // Interpolate colors based on heights
-            RGB c1 = chooseColor(h1);
-            RGB c2 = chooseColor(h2);
-            RGB c3 = chooseColor(h3);
-            RGB c4 = chooseColor(h4);
-            
-            // Draw the quad with interpolated vertex colors
-            glBegin(GL_QUADS);
-                glColor3f(c1.r, c1.g, c1.b); glVertex2f(xpos, ypos);                   // Top-left
-                glColor3f(c2.r, c2.g, c2.b); glVertex2f(xpos + cellWidth, ypos);       // Top-right
-                glColor3f(c4.r, c4.g, c4.b); glVertex2f(xpos + cellWidth, ypos + cellHeight); // Bottom-right
-                glColor3f(c3.r, c3.g, c3.b); glVertex2f(xpos, ypos + cellHeight);      // Bottom-left
-            glEnd();
+    float cellWidth = 2.0f / (terrain->width - 1);
+    float cellHeight = 2.0f / (terrain->height - 1);
+    float depthStep = 2.0f / (terrain->depth - 1);
+
+    // Loop through 3D terrain grid, rendering only the visible voxel faces
+    for (int z = 0; z < terrain->depth; z++) {
+        for (int y = 0; y < terrain->height; y++) {
+            for (int x = 0; x < terrain->width; x++) {
+                // Current voxel height
+                float height = terrain->heights[z * (terrain->width * terrain->height) + y * terrain->width + x];
+                RGB color = chooseColor(height);  // Choose a color based on the voxel height
+
+                // Calculate position of the voxel in 3D space
+                float xpos = (x * cellWidth) - 1.0f;
+                float ypos = (y * cellHeight) - 1.0f;
+                float zpos = (z * depthStep) - 1.0f;
+
+                // Check neighboring voxels for face culling
+                int leftNeighborExists = (x > 0);
+                int rightNeighborExists = (x < terrain->width - 1);
+                int topNeighborExists = (y > 0);
+                int bottomNeighborExists = (y < terrain->height - 1);
+                int frontNeighborExists = (z > 0);
+                int backNeighborExists = (z < terrain->depth - 1);
+
+                // Render front face if there is no neighbor in front
+                if (!frontNeighborExists || terrain->heights[(z - 1) * (terrain->width * terrain->height) + y * terrain->width + x] == 0) {
+                    glBegin(GL_QUADS);
+                    glColor3f(color.r, color.g, color.b);
+                    glVertex3f(xpos, ypos, zpos);
+                    glVertex3f(xpos + cellWidth, ypos, zpos);
+                    glVertex3f(xpos + cellWidth, ypos + cellHeight, zpos);
+                    glVertex3f(xpos, ypos + cellHeight, zpos);
+                    glEnd();
+                }
+
+                // Render back face if there is no neighbor in back
+                if (!backNeighborExists || terrain->heights[(z + 1) * (terrain->width * terrain->height) + y * terrain->width + x] == 0) {
+                    glBegin(GL_QUADS);
+                    glColor3f(color.r, color.g, color.b);
+                    glVertex3f(xpos, ypos, zpos + depthStep);
+                    glVertex3f(xpos + cellWidth, ypos, zpos + depthStep);
+                    glVertex3f(xpos + cellWidth, ypos + cellHeight, zpos + depthStep);
+                    glVertex3f(xpos, ypos + cellHeight, zpos + depthStep);
+                    glEnd();
+                }
+
+                // Render left face if there is no neighbor to the left
+                if (!leftNeighborExists || terrain->heights[z * (terrain->width * terrain->height) + y * terrain->width + (x - 1)] == 0) {
+                    glBegin(GL_QUADS);
+                    glColor3f(color.r, color.g, color.b);
+                    glVertex3f(xpos, ypos, zpos);
+                    glVertex3f(xpos, ypos + cellHeight, zpos);
+                    glVertex3f(xpos, ypos + cellHeight, zpos + depthStep);
+                    glVertex3f(xpos, ypos, zpos + depthStep);
+                    glEnd();
+                }
+
+                // Render right face if there is no neighbor to the right
+                if (!rightNeighborExists || terrain->heights[z * (terrain->width * terrain->height) + y * terrain->width + (x + 1)] == 0) {
+                    glBegin(GL_QUADS);
+                    glColor3f(color.r, color.g, color.b);
+                    glVertex3f(xpos + cellWidth, ypos, zpos);
+                    glVertex3f(xpos + cellWidth, ypos + cellHeight, zpos);
+                    glVertex3f(xpos + cellWidth, ypos + cellHeight, zpos + depthStep);
+                    glVertex3f(xpos + cellWidth, ypos, zpos + depthStep);
+                    glEnd();
+                }
+
+                // Render top face if there is no neighbor on top
+                if (!topNeighborExists || terrain->heights[z * (terrain->width * terrain->height) + (y - 1) * terrain->width + x] == 0) {
+                    glBegin(GL_QUADS);
+                    glColor3f(color.r, color.g, color.b);
+                    glVertex3f(xpos, ypos, zpos);
+                    glVertex3f(xpos + cellWidth, ypos, zpos);
+                    glVertex3f(xpos + cellWidth, ypos, zpos + depthStep);
+                    glVertex3f(xpos, ypos, zpos + depthStep);
+                    glEnd();
+                }
+
+                // Render bottom face if there is no neighbor below
+                if (!bottomNeighborExists || terrain->heights[z * (terrain->width * terrain->height) + (y + 1) * terrain->width + x] == 0) {
+                    glBegin(GL_QUADS);
+                    glColor3f(color.r, color.g, color.b);
+                    glVertex3f(xpos, ypos + cellHeight, zpos);
+                    glVertex3f(xpos + cellWidth, ypos + cellHeight, zpos);
+                    glVertex3f(xpos + cellWidth, ypos + cellHeight, zpos + depthStep);
+                    glVertex3f(xpos, ypos + cellHeight, zpos + depthStep);
+                    glEnd();
+                }
+            }
         }
     }
-    
+
     glfwSwapBuffers(window);
 }
 
 void startRenderLoop(Terrain* terrain) {
     // Main rendering loop
     while (!glfwWindowShouldClose(window)) {
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);  // Clear color and depth buffers
         renderTerrain(terrain);  // Render the terrain
         glfwPollEvents();  // Poll for events (keyboard, mouse, etc.)
     }
@@ -137,7 +243,6 @@ void cleanupGraphics() {
 
     // Terminate GLFW
     glfwTerminate();
-
+    
     printf("Graphics cleaned up.\n");
 }
-
