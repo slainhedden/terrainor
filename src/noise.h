@@ -4,7 +4,7 @@
 #define PERM_SIZE 256
 
 void initNoise(); // Function to initialize the permutation table
-double perlinNoise3D(double x, double y, double z); // Function to generate Perlin noise
-float* generateNoiseMap(int width, int height, int depth, int offsetX, int offsetY, int offsetZ, int octaves, float persistence, float lacunarity, float noiseScale);
+double perlinNoise2D(double x, double y); // Function to generate Perlin noise
+float* generateNoiseMap2D(int width, int depth, int offsetX, int offsetZ, int octaves, float persistence, float lacunarity, float noiseScale);
 
 #endif

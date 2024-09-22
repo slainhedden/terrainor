@@ -23,6 +23,8 @@ typedef enum {
     BOTTOM
 } FaceType;
 
+#define MAX_HEIGHT 50.0f
+
 void setupLighting();
 void initializeGraphics();
 void renderTerrain(Terrain* terrain);
@@ -33,7 +35,7 @@ void startRenderLoop(Terrain* terrain);
 void cleanupGraphics();
 
 // Declaration of the renderFace function
-void renderFace(float xpos, float ypos, float zpos, float cellWidth, float cellHeight, float depthStep, RGB color, FaceType face);
+void renderFace(float xpos, float ypos, float zpos, float cellWidth, float cellHeight, float depthStep, GLuint textureID, FaceType face);
 
 #endif
 
