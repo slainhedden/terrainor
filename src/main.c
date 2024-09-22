@@ -5,11 +5,8 @@
 #include <stdio.h>
 
 int main() {
-    // Initialize the noise system with a randomized seed
-    initNoise();
-    
     // Create a terrain of 100x100 grid points
-    Terrain* terrain = createTerrain(1024, 1024, 62);
+    Terrain* terrain = createTerrain(1024, 1024, 64);
     if (!terrain) {
         printf("Failed to create terrain.\n");
         return 1;

@@ -55,6 +55,7 @@ double perlinNoise3D(double x, double y, double z) {
                                    grad(perm[BB + 1], x - 1, y - 1, z - 1))));
 }
 
+
 float* generateNoiseMap(int width, int height, int depth, int offsetX, int offsetY, int offsetZ, int octaves, float persistence, float lacunarity, float noiseScale) {
     // Allocate memory for noise values and normalized values
     float* noiseValues = (float*)malloc(width * height * depth * sizeof(float));
@@ -81,9 +82,9 @@ float* generateNoiseMap(int width, int height, int depth, int offsetX, int offse
 
                 // Loop through octaves
                 for (int i = 0; i < octaves; i++) {
-                    float sampleX = (x + offsetX * (width - 1)) / noiseScale * frequency;
-                    float sampleY = (y + offsetY * (height - 1)) / noiseScale * frequency;
-                    float sampleZ = (z + offsetZ * (depth - 1)) / noiseScale * frequency;
+                    float sampleX = (x + offsetX) / noiseScale * frequency;
+                    float sampleY = (y + offsetY) / noiseScale * frequency;
+                    float sampleZ = (z + offsetZ) / noiseScale * frequency;
 
                     // Get the Perlin noise value
                     float perlinValue = perlinNoise3D(sampleX, sampleY, sampleZ);
@@ -104,7 +105,10 @@ float* generateNoiseMap(int width, int height, int depth, int offsetX, int offse
 
     // Normalize the noise values to a 0-1 range
     for (int i = 0; i < width * height * depth; i++) {
-        normalizedNoiseValues[i] = (noiseValues[i] + 1) / maxPossibleHeight;
+        normalizedNoiseValues[i] = (noiseValues[i] + maxPossibleHeight) / (2 * maxPossibleHeight);
+        // Clamp to [0, 1]
+        if (normalizedNoiseValues[i] < 0.0f) normalizedNoiseValues[i] = 0.0f;
+        if (normalizedNoiseValues[i] > 1.0f) normalizedNoiseValues[i] = 1.0f;
     }
 
     // Free the unnormalized noise values array
